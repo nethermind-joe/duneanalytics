@@ -7,7 +7,7 @@ import logging
 # --------- Constants --------- #
 
 BASE_URL = "https://dune.com"
-GRAPH_URL = 'https://core-hsr.dune.com/v1/graphql'
+GRAPH_URL = 'https://app-api.dune.com/v1/graphql'
 
 # --------- Constants --------- #
 logging.basicConfig(
@@ -122,25 +122,20 @@ class DuneAnalytics:
             logger.error(response.text)
             return None
 
-    def query_result(self, result_id):
+    def query_result(self, result_id,query_id):
         """
         Fetch the result for a query
         :param result_id: result id of the query
         :return:
         """
-        query_data = {"operationName": "FindResultDataByResult",
-                      "variables": {"result_id": result_id, "error_id": "00000000-0000-0000-0000-000000000000"},
-                      "query": "query FindResultDataByResult($result_id: uuid!, $error_id: uuid!) "
-                               "{\n  query_results(where: {id: {_eq: $result_id}}) "
-                               "{\n    id\n    job_id\n    runtime\n    generated_at\n    columns\n    __typename\n  }"
-                               "\n  query_errors(where: {id: {_eq: $error_id}}) {\n    id\n    job_id\n    runtime\n"
-                               "    message\n    metadata\n    type\n    generated_at\n    __typename\n  }\n"
-                               "\n  get_result_by_result_id(args: {want_result_id: $result_id}) {\n    data\n    __typename\n  }\n}\n"
+        query_data = {"operationName": "GetExecution",
+                      "variables": {"execution_id": result_id,"query_id":query_id,"parameters": []},
+                      "query": "query GetExecution($execution_id: String!, $query_id: Int!, $parameters: [Parameter!]!) {\n  get_execution(\n    execution_id: $execution_id\n    query_id: $query_id\n    parameters: $parameters\n  ) {\n    execution_queued {\n      execution_id\n      execution_user_id\n      position\n      execution_type\n      created_at\n      __typename\n    }\n    execution_running {\n      execution_id\n      execution_user_id\n      execution_type\n      started_at\n      created_at\n      __typename\n    }\n    execution_succeeded {\n      execution_id\n      runtime_seconds\n      generated_at\n      columns\n      data\n      __typename\n    }\n    execution_failed {\n      execution_id\n      type\n      message\n      metadata {\n        line\n        column\n        hint\n        __typename\n      }\n      runtime_seconds\n      generated_at\n      __typename\n    }\n    __typename\n  }\n}\n"
                       }
 
         self.session.headers.update({'authorization': f'Bearer {self.token}'})
-
         response = self.session.post(GRAPH_URL, json=query_data)
+        print(response)
         if response.status_code == 200:
             data = response.json()
             logger.debug(data)
